@@ -14,8 +14,10 @@ import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsSetupTask
  * -PversionTag   - works together with "branch-build" profile and overrides "-SNAPSHOT" suffix of the version.
  */
 plugins {
-    kotlin("multiplatform") version "1.4.0"
+    kotlin("multiplatform") version "1.4.32"
     id("maven-publish")
+    id("io.github.gradle-nexus.publish-plugin") version "1.0.0"
+    id("signing")
 }
 
 group = "org.jetbrains.kotlinx"
@@ -91,12 +93,31 @@ publishing {
 
         create<MavenPublication>("kotlinx-html-assembly") {
             artifactId = "kotlinx-html-assembly"
+            pom.config { name by "${project.name}-assembly" }
             jar("jsWebJar") {
                 archiveBaseName by "${project.name}-assembly"
                 archiveClassifier by "webjar"
                 from("$buildDir/js/packages/${project.name}/kotlin/kotlinx-html-js.js")
                 into("META-INF/resources/webjars/${project.name}/${project.version}/")
             }
+            javadocJar("assemblyJavadocJar")
+            jar("assemblySourcesJar") {
+                archiveClassifier by "sources"
+                from("$buildDir/js/packages/${project.name}/kotlin/kotlinx-html-js.js")
+            }
+        }
+
+        named<MavenPublication>("kotlinMultiplatform") {
+            pom.config { name by project.name }
+        }
+    }
+}
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            username.set(System.getenv("SONATYPE_USERNAME"))
+            password.set(System.getenv("SONATYPE_PASSWORD"))
         }
     }
 }
@@ -344,6 +365,7 @@ typealias MavenPomFile = org.gradle.api.publish.maven.MavenPom
 fun MavenPomFile.config(config: MavenPomFile.() -> Unit = {}) {
     config()
 
+    description by "The kotlinx.html library provides the ability to generate DOM elements using statically typed HTML builders"
     url by "https://github.com/Kotlin/kotlinx.html"
 
     licenses {
@@ -357,6 +379,7 @@ fun MavenPomFile.config(config: MavenPomFile.() -> Unit = {}) {
         connection by "scm:git:git@github.com:Kotlin/kotlinx.html.git"
         url by "https://github.com/Kotlin/kotlinx.html"
         tag by "HEAD"
+        developerConnection by "scm:git:ssh://github.com:Kotlin/kotlinx.html.git"
     }
 
     developers {
